@@ -1,0 +1,15 @@
+{
+  "name": "naiwa-manager",
+  "version": "1.0.0",
+  "description": "奶蛙管理软件 - 本地管理与在线找图",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
