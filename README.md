@@ -10,13 +10,31 @@
 </p>
 
 <p align="center">
-  <a href="https://gitee.com/osdepk/naiwa-manager"><img src="https://img.shields.io/badge/Gitee-奶蛙管理-blue?logo=gitee" alt="Gitee"></a>
+  <a href="https://gitee.com/osdepk/naiwa-manager"><img src="https://img.shields.io/badge/Gitee-奶蛙管理-C71D23?logo=gitee" alt="Gitee"></a>
+  <a href="https://github.com/osdepk001/Naiwa-Manager"><img src="https://img.shields.io/badge/GitHub-奶蛙管理-181717?logo=github" alt="GitHub"></a>
+  <br/>
   <img src="https://img.shields.io/badge/Electron-33.x-47848F?logo=electron" alt="Electron">
   <img src="https://img.shields.io/badge/平台-Windows%20%7C%20macOS-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/版本-v1.0.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/许可-MIT-green" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://github.com/osdepk001/Naiwa-Manager/releases/latest"><img src="https://img.shields.io/badge/⬇_下载最新版本-奶蛙管理_1.0.0_Setup.exe-blue?logo=windows" alt="Download"></a>
+</p>
+
 ---
+
+> **多仓库同步说明**
+>
+> 本项目在两个平台同步维护，请按需选择：
+>
+> | 平台 | 仓库地址 | 用途 |
+> |------|----------|------|
+> | 🇨🇳 Gitee | [gitee.com/osdepk/naiwa-manager](https://gitee.com/osdepk/naiwa-manager) | 国内访问快，推荐国内用户 clone |
+> | 🌍 GitHub | [github.com/osdepk001/Naiwa-Manager](https://github.com/osdepk001/Naiwa-Manager) | 国际访问，Release 下载 |
+>
+> 两个仓库的代码完全一致，差异仅为提交者身份（Gitee: `osdepk <898838164@qq.com>` / GitHub: `osdepk001 <osdepk@outlook.com>`）。
 
 ## 项目介绍
 
@@ -225,6 +243,25 @@ npx electron-builder --win --x64
 - ✅ 动态关于菜单
 - ✅ 中文 NSIS 安装包（带 logo + 许可协议）
 - ✅ electron-builder 打包
+
+## 发行版 / 下载
+
+### v1.0.0（2026-06-16）— 最新稳定版
+
+| 文件 | 平台 | 大小 | 下载 |
+|------|------|------|------|
+| `奶蛙管理-1.0.0-Setup.exe` | Windows x64 | ~80 MB | [GitHub Release](https://github.com/osdepk001/Naiwa-Manager/releases/tag/v1.0.0) / [Gitee Release](https://gitee.com/osdepk/naiwa-manager/releases/tag/v1.0.0) |
+
+#### 安装包特性
+- ✅ 中文安装向导
+- ✅ 顶部 + 侧栏品牌图（奶蛙 logo）
+- ✅ 7 尺寸 ICO 图标
+- ✅ 桌面 / 开始菜单快捷方式
+- ✅ 中文 MIT 许可协议（UTF-16 LE + BOM）
+- ✅ 卸载保留用户数据
+
+#### SHA-256 校验
+安装包生成后请用 `certutil -hashfile 奶蛙管理-1.0.0-Setup.exe SHA256` 校验（首次发布，建议在 GitHub Release 页面查看实际哈希值）。
 
 ## 开源协议
 
