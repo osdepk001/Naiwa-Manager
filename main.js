@@ -8,17 +8,35 @@ const { version } = require('./package.json');
 let mainWindow;
 
 // 资源目录
-const BASE_DIR = path.join(__dirname, 'src');
-const IMAGES_DIR = path.join(BASE_DIR, 'images');
-const VIDEOS_DIR = path.join(BASE_DIR, 'videos');
+// 开发模式：项目根目录的 src/（可写、可热重载）
+// 打包模式：app.getPath('userData')/src/（必须可写，asar 里的只读）
+const isDev = !app.isPackaged;
+const DATA_DIR = isDev
+  ? path.join(__dirname, 'src')
+  : path.join(app.getPath('userData'), 'src');
+const IMAGES_DIR = path.join(DATA_DIR, 'images');
+const VIDEOS_DIR = path.join(DATA_DIR, 'videos');
+const ICON_DIR = path.join(DATA_DIR, 'icon');
+// 只读资源目录（图标、占位图等，存在于安装包/项目里）
+const READONLY_ICON_DIR = path.join(__dirname, 'src', 'icon');
 
 // 确保目录存在
 function ensureDirs() {
-  [IMAGES_DIR, VIDEOS_DIR].forEach(dir => {
+  [DATA_DIR, IMAGES_DIR, VIDEOS_DIR, ICON_DIR].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
   });
+}
+
+// 解析文件路径：兼容绝对路径、相对路径（相对 DATA_DIR）、以及老式 src/xxx 写法
+// renderer 端传过来时通常是 'src/images/xxx.jpg'，需要拼到 DATA_DIR
+function resolveFilePath(filePath) {
+  if (!filePath) return null;
+  if (path.isAbsolute(filePath)) return filePath;
+  // 去掉前导 src/（如果有），直接拼到 DATA_DIR
+  const clean = filePath.replace(/^src[\\/]/, '');
+  return path.join(DATA_DIR, clean);
 }
 
 function createWindow() {
@@ -116,12 +134,18 @@ function downloadImage(url, destPath) {
 // 获取本地文件列表
 ipcMain.handle('get-local-files', async () => {
   try {
+    const toFileUrl = (relPath) => {
+      const abs = path.join(DATA_DIR, relPath.replace(/^src[\\/]/, ''));
+      return 'file:///' + abs.replace(/\\/g, '/').split('/').map(seg => encodeURIComponent(seg)).join('/');
+    };
+
     const images = fs.readdirSync(IMAGES_DIR).filter(f => {
       const ext = path.extname(f).toLowerCase();
       return ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'].includes(ext);
     }).map(f => ({
       name: f,
       path: `src/images/${f}`,
+      url: toFileUrl(`src/images/${f}`),
       type: 'image',
     }));
 
@@ -131,6 +155,7 @@ ipcMain.handle('get-local-files', async () => {
     }).map(f => ({
       name: f,
       path: `src/videos/${f}`,
+      url: toFileUrl(`src/videos/${f}`),
       type: 'video',
     }));
 
@@ -188,19 +213,29 @@ ipcMain.handle('upload-files', async () => {
 // 删除文件
 ipcMain.handle('delete-file', async (event, { filePath }) => {
   try {
-    const fullPath = path.join(__dirname, filePath);
+    const fullPath = resolveFilePath(filePath);
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
+    } else {
+      return { success: false, error: '文件不存在: ' + fullPath };
     }
     return { success: true };
   } catch (err) {
+    console.error('[delete-file] Error:', err);
     return { success: false, error: err.message };
   }
 });
 
 // 获取文件的完整路径
 ipcMain.handle('get-full-path', async (event, { filePath }) => {
-  return path.join(__dirname, filePath);
+  return resolveFilePath(filePath);
+});
+
+// 获取本地文件的 file:// URL（用于 img/video src 加载真实磁盘文件，避开 asar）
+ipcMain.handle('get-file-url', async (event, { filePath }) => {
+  const abs = resolveFilePath(filePath);
+  // Windows 路径转 file:// URL：用正斜杠 + encodeURIComponent 处理中文/空格
+  return 'file:///' + abs.replace(/\\/g, '/').split('/').map(seg => encodeURIComponent(seg)).join('/');
 });
 
 // ==================== 在线检索（多渠道并行） ====================
@@ -415,14 +450,18 @@ ipcMain.handle('download-image', async (event, { imageUrl }) => {
 
 // 打开文件所在目录
 ipcMain.handle('open-file-location', async (event, { filePath }) => {
-  const fullPath = path.join(__dirname, filePath);
-  shell.showItemInFolder(fullPath);
+  const fullPath = resolveFilePath(filePath);
+  if (fs.existsSync(fullPath)) {
+    shell.showItemInFolder(fullPath);
+  } else {
+    shell.openPath(path.dirname(fullPath));
+  }
   return { success: true };
 });
 
 // 用系统默认程序打开文件
 ipcMain.handle('open-external', async (event, { filePath }) => {
-  const fullPath = path.join(__dirname, filePath);
+  const fullPath = resolveFilePath(filePath);
   await shell.openPath(fullPath);
   return { success: true };
 });
@@ -446,10 +485,12 @@ ipcMain.handle('delete-files', async (event, { filePaths }) => {
   const results = { deleted: [], failed: [] };
   for (const filePath of filePaths) {
     try {
-      const fullPath = path.join(__dirname, filePath);
+      const fullPath = resolveFilePath(filePath);
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         results.deleted.push(filePath);
+      } else {
+        results.failed.push({ path: filePath, error: '文件不存在' });
       }
     } catch (err) {
       results.failed.push({ path: filePath, error: err.message });
@@ -645,20 +686,26 @@ ipcMain.handle('check-update', async () => {
 ipcMain.handle('copy-to-clipboard', async (event, { imagePath, imageUrl }) => {
   try {
     if (imagePath) {
-      const ext = path.extname(imagePath).toLowerCase();
+      // 解析到 userData 真实物理路径（开发模式 / 打包模式都正确）
+      const absPath = resolveFilePath(imagePath);
+      if (!fs.existsSync(absPath)) {
+        return { success: false, error: '文件不存在：' + absPath };
+      }
+
+      const ext = path.extname(absPath).toLowerCase();
       const isGif = ext === '.gif';
 
       if (isGif && process.platform === 'win32') {
         // GIF 动图：用 PowerShell Set-Clipboard -Path 写入真实文件路径
-        return copyFileDropListWin32([imagePath]);
+        return await copyFileDropListWin32([absPath]);
       }
 
       // 静态图：用 NativeImage 写入位图
-      const img = nativeImage.createFromPath(imagePath);
+      const img = nativeImage.createFromPath(absPath);
       if (!img.isEmpty()) {
         clipboard.writeImage(img);
       } else {
-        const buffer = fs.readFileSync(imagePath);
+        const buffer = fs.readFileSync(absPath);
         const mime = ext === '.webp' ? 'image/webp' : ext === '.bmp' ? 'image/bmp' : 'image/png';
         const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
         clipboard.writeImage(nativeImage.createFromDataURL(dataUrl));
@@ -716,57 +763,89 @@ ipcMain.handle('copy-to-clipboard', async (event, { imagePath, imageUrl }) => {
   }
 });
 
-// Windows: 用 PowerShell Set-Clipboard -Path 写入 CF_HDROP 格式
-// Set-Clipboard 是 PowerShell 内置 cmdlet，走 OLE 调用 OLE剪贴板 API，
-// 能正确访问用户桌面 session 的剪贴板
+// Windows: 用 PowerShell Set-Clipboard -LiteralPath 写入 CF_HDROP 格式
+// 关键：使用 -LiteralPath（不做变量展开） + 通过 .ps1 脚本文件传参（避免命令行转义问题）
+// PowerShell 必须 -STA（单线程单元）才能访问桌面 session 剪贴板
 function copyFileDropListWin32(filePaths) {
   if (process.platform !== 'win32') {
     return { success: false, error: '此方法仅支持 Windows' };
   }
-  try {
-    const { execFileSync, spawn } = require('child_process');
 
-    // 用 -Command 模式直接传命令，-Path 参数支持文件数组
-    // PowerShell 单实例化 -STA（单线程单元）是 OLE 剪贴板的硬性要求
-    const psArgs = ['-NoProfile', '-NonInteractive', '-STA'];
-    const psScript = `Set-Clipboard -Path ${filePaths.map(p => `'${p.replace(/'/g, "''")}'`).join(',')}`;
+  const { spawn } = require('child_process');
+  const tmpDir = path.join(app.getPath('temp'), 'naiwa-copy');
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
-    // 异步 spawn，避免 stdout 缓冲阻塞
-    return new Promise((resolve) => {
-      const child = spawn('powershell.exe', [...psArgs, '-Command', psScript], {
-        stdio: 'pipe',
-        windowsHide: true,
-        shell: false,
-      });
+  // 写一个临时 ps1 脚本，避免命令行转义 / 长度限制
+  // 用 [System.IO.Path]::GetFullPath 规范化路径（处理 \1 \2 等特殊字符）
+  const scriptPath = path.join(tmpDir, `copy_${Date.now()}_${process.pid}.ps1`);
+  // PowerShell here-string 用 @'...'@，单引号表示字面量不做变量展开
+  const psLines = [
+    "try {",
+    "  $paths = @(",
+  ];
+  filePaths.forEach(p => {
+    // PowerShell 单引号字符串字面量：唯一的转义是 '' → '
+    // 反斜杠不需要转义（PowerShell 单引号字面量不做转义处理）
+    const safe = String(p).replace(/'/g, "''");
+    psLines.push(`    '${safe}'`);
+  });
+  psLines.push("  )");
+  psLines.push("  # 规范化路径，避免 \\\\1 \\\\2 等转义字符陷阱");
+  psLines.push("  $paths = $paths | ForEach-Object { [System.IO.Path]::GetFullPath($_) }");
+  psLines.push("  foreach ($p in $paths) { if (-not (Test-Path -LiteralPath $p)) { throw \"文件不存在: $p\" } }");
+  psLines.push("  Set-Clipboard -LiteralPath $paths");
+  psLines.push("  exit 0");
+  psLines.push("} catch {");
+  psLines.push("  [Console]::Error.WriteLine($_.Exception.Message)");
+  psLines.push("  exit 1");
+  psLines.push("}");
 
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', d => stdout += d.toString());
-      child.stderr.on('data', d => stderr += d.toString());
+  fs.writeFileSync(scriptPath, psLines.join('\r\n'), 'utf8');
 
-      const timer = setTimeout(() => {
-        try { child.kill(); } catch (e) {}
-        resolve({ success: false, error: 'PowerShell 调用超时' });
-      }, 10000);
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        console.error('[copyFileDropListWin32] spawn error:', err.message);
-        resolve({ success: false, error: err.message });
-      });
-
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        if (code === 0) {
-          resolve({ success: true });
-        } else {
-          console.error('[copyFileDropListWin32] PS exit code:', code, 'stderr:', stderr);
-          resolve({ success: false, error: 'PowerShell 退出码 ' + code + (stderr ? ': ' + stderr : '') });
-        }
-      });
+  return new Promise((resolve) => {
+    const child = spawn('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-STA',          // OLE 剪贴板硬性要求：单线程单元
+      '-ExecutionPolicy', 'Bypass',
+      '-File', scriptPath,
+    ], {
+      stdio: 'pipe',
+      windowsHide: true,
+      shell: false,
     });
-  } catch (err) {
-    console.error('[copyFileDropListWin32] Error:', err.message);
-    return { success: false, error: err.message };
-  }
+
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', d => stdout += d.toString());
+    child.stderr.on('data', d => stderr += d.toString());
+
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch (e) {}
+      // 清理临时脚本
+      try { fs.unlinkSync(scriptPath); } catch (e) {}
+      resolve({ success: false, error: 'PowerShell 调用超时' });
+    }, 10000);
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      try { fs.unlinkSync(scriptPath); } catch (e) {}
+      console.error('[copyFileDropListWin32] spawn error:', err.message);
+      resolve({ success: false, error: err.message });
+    });
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      // 清理临时脚本
+      try { fs.unlinkSync(scriptPath); } catch (e) {}
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        console.error('[copyFileDropListWin32] PS exit code:', code, 'stderr:', stderr);
+        // 提取关键错误信息
+        const errLine = stderr.split(/\r?\n/).find(l => l.trim()) || 'PowerShell 退出码 ' + code;
+        resolve({ success: false, error: errLine });
+      }
+    });
+  });
 }

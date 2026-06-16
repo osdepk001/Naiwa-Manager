@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('naiwaAPI', {
 
   // 获取完整路径
   getFullPath: (filePath) => ipcRenderer.invoke('get-full-path', { filePath }),
+  getFileUrl: (filePath) => ipcRenderer.invoke('get-file-url', { filePath }),
 
   // 在线搜索图片
   searchImages: (keyword, page = 0, gifOnly = false) => ipcRenderer.invoke('search-images', { keyword, page, gifOnly }),

@@ -1,0 +1,32 @@
+appId: com.osdepk.naiwamanager
+productName: 奶蛙管理
+copyright: 版权所有 (c) 2026 osdepk
+
+directories:
+  output: dist
+  buildResources: build
+
+win:
+  icon: build/icons/icon.ico
+  artifactName: ${productName}-${version}-Setup.${ext}
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 奶蛙管理
+  deleteAppDataOnUninstall: false
+  installerIcon: build/icons/icon.ico
+  uninstallerIcon: build/icons/icon.ico
+  installerHeader: build/installerSidebar.png
+  installerSidebar: build/installerSidebar.png
+  language: "2052"
+  displayLanguageSelector: false
+  license: build/license.txt

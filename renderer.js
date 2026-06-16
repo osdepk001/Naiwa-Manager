@@ -611,7 +611,7 @@ function createMediaCard(file, type) {
     const wrapper = document.createElement('div');
     wrapper.className = 'card-preview-wrapper';
     wrapper.innerHTML = `
-      <img class="card-preview video-thumb" src="" alt="${file.name}" data-video-path="${file.path}">
+      <img class="card-preview video-thumb" src="" alt="${file.name}" data-video-path="${file.url}">
       <div class="play-overlay">&#9654;</div>
     `;
     card.appendChild(wrapper);
@@ -621,11 +621,11 @@ function createMediaCard(file, type) {
     info.innerHTML = `<div class="card-name" title="${file.name}">${file.name}</div>`;
     card.appendChild(info);
 
-    generateVideoThumbnail(file.path, card.querySelector('.video-thumb'));
+    generateVideoThumbnail(file.url, card.querySelector('.video-thumb'));
   } else {
     const img = document.createElement('img');
     img.className = 'card-preview';
-    img.src = file.path;
+    img.src = file.url;
     img.alt = file.name;
     img.loading = 'lazy';
     card.appendChild(img);
@@ -685,7 +685,8 @@ function generateVideoThumbnail(videoPath, imgEl) {
   const video = document.createElement('video');
   video.preload = 'metadata';
   video.muted = true;
-  video.crossOrigin = 'anonymous';
+  // file:// 协议下不能设 crossOrigin，会导致 video 加载失败
+  // video.crossOrigin = 'anonymous';
   video.src = videoPath;
 
   let resolved = false;
@@ -759,7 +760,7 @@ async function openPreview(file) {
 
   if (file.type === 'video') {
     const video = document.createElement('video');
-    video.src = file.path;
+    video.src = file.url;
     video.controls = true;
     video.autoplay = true;
     video.style.maxWidth = '85vw';
@@ -767,7 +768,7 @@ async function openPreview(file) {
     body.appendChild(video);
   } else {
     const img = document.createElement('img');
-    img.src = file.path;
+    img.src = file.url;
     img.alt = file.name;
     body.appendChild(img);
   }
@@ -788,15 +789,21 @@ function closePreview() {
 
 async function handleDeletePreview() {
   if (!currentPreviewFile || currentPreviewFile.type === 'online') return;
-  if (!confirm(`确定要删除「${currentPreviewFile.name}」吗？`)) return;
+  if (!confirm(`确定要删除「${currentPreviewFile.name}」吗？此操作不可恢复。`)) return;
 
-  const result = await window.naiwaAPI.deleteFile(currentPreviewFile.path);
-  if (result.success) {
-    closePreview();
-    loadLocalFiles();
-    showToast(`已删除「${currentPreviewFile.name}」`);
-  } else {
-    showToast(`删除失败: ${result.error}`, 'error');
+  try {
+    const result = await window.naiwaAPI.deleteFile(currentPreviewFile.path);
+    if (result && result.success) {
+      const name = currentPreviewFile.name;
+      closePreview();
+      showToast(`已删除「${name}」`);
+      await loadLocalFiles();
+    } else {
+      showToast(`删除失败: ${(result && result.error) || '未知错误'}`, 'error');
+    }
+  } catch (err) {
+    console.error('[handleDeletePreview] Error:', err);
+    showToast(`删除异常: ${err.message || err}`, 'error');
   }
 }
 

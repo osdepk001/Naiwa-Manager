@@ -7,9 +7,11 @@
     "start": "electron .",
     "dev": "electron . --dev"
   },
-  "author": "",
+  "author": "osdepk <898838164@qq.com>",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-icon-builder": "^2.0.1"
   }
 }
