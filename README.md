@@ -27,14 +27,12 @@
 
 > **多仓库同步说明**
 >
-> 本项目在两个平台同步维护，请按需选择：
+> 本项目在两个平台同步发布，请按需选择：
 >
 > | 平台 | 仓库地址 | 用途 |
 > |------|----------|------|
 > | 🇨🇳 Gitee | [gitee.com/osdepk/naiwa-manager](https://gitee.com/osdepk/naiwa-manager) | 国内访问快，推荐国内用户 clone |
 > | 🌍 GitHub | [github.com/osdepk001/Naiwa-Manager](https://github.com/osdepk001/Naiwa-Manager) | 国际访问，Release 下载 |
->
-> 两个仓库的代码完全一致，差异仅为提交者身份（Gitee: `osdepk <898838164@qq.com>` / GitHub: `osdepk001 <osdepk@outlook.com>`）。
 
 ## 项目介绍
 
@@ -265,11 +263,8 @@ npx electron-builder --win --x64
 
 ## 开源协议
 
-[MIT License](build/license.txt) — Copyright (c) 2026 osdepk
+[MIT License](build/license.txt) — Copyright (c) 2026
 
-## 作者
+## 致谢
 
-- **osdepk**
-- 邮箱：898838164@qq.com
-- 官网：[http://osdepk.cn](http://osdepk.cn)
-- 仓库：[https://gitee.com/osdepk/naiwa-manager](https://gitee.com/osdepk/naiwa-manager)
+本项目使用 [Electron](https://www.electronjs.org/) 构建，感谢所有开源贡献者。
