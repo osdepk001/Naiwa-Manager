@@ -248,7 +248,7 @@ npx electron-builder --win --x64
 
 | 文件 | 平台 | 大小 | 下载 |
 |------|------|------|------|
-| `奶蛙管理-1.0.0-Setup.exe` | Windows x64 | ~80 MB | [GitHub Release](https://github.com/osdepk001/Naiwa-Manager/releases/tag/v1.0.0) / [Gitee Release](https://gitee.com/osdepk/naiwa-manager/releases/tag/v1.0.0) |
+| `奶蛙管理-1.0.0-Setup.exe` |Windows x64|~80 MB| [GitHub 发布]([https://github.com/osdepk001/Naiwa-Manager/releases/tag/v1.0.0](https://github.com/osdepk001/Naiwa-Manager/releases/tag/%E5%A5%B6%E5%A8%83%E7%AE%A1%E7%90%86)) / [Gitee 发布](https://gitee.com/osdepk/naiwa-manager/releases/tag/v1.0.0) |
 
 #### 安装包特性
 - ✅ 中文安装向导
