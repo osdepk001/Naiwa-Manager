@@ -263,7 +263,11 @@ npx electron-builder --win --x64
 
 ## 开源协议
 
-[MIT License](build/license.txt) — Copyright (c) 2026
+[MIT License](build/license.txt) — Copyright (c) 2026 osdepk
+
+## 作者
+
+osdepk
 
 ## 致谢
 
